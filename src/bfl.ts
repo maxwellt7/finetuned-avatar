@@ -70,3 +70,67 @@ export async function getResult(
   });
   return (await res.json()) as BflResult;
 }
+
+export interface GeneratePayload {
+  finetune_id: string;
+  finetune_strength: number;
+  prompt: string;
+  aspect_ratio: string;
+  safety_tolerance: number;
+  output_format: "png" | "jpeg";
+}
+
+export interface GenerateOptions {
+  pollIntervalMs?: number;
+  maxAttempts?: number;
+}
+
+export interface GenerateResult {
+  imageUrl: string;
+  taskId: string;
+}
+
+export async function generate(
+  cfg: Pick<Config, "apiKey" | "apiBase">,
+  payload: GeneratePayload,
+  opts: GenerateOptions = {}
+): Promise<GenerateResult> {
+  const pollIntervalMs = opts.pollIntervalMs ?? 1500;
+  const maxAttempts = opts.maxAttempts ?? 80;
+
+  const submitRes = await bflFetch(cfg, "/flux-pro-1.1-ultra-finetuned", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  const submitBody = (await submitRes.json()) as {
+    id: string;
+    polling_url: string;
+  };
+
+  for (let i = 0; i < maxAttempts; i++) {
+    const pollRes = await fetch(submitBody.polling_url, {
+      headers: { "x-key": cfg.apiKey },
+    });
+    if (!pollRes.ok) {
+      throw new Error(`Poll failed: ${pollRes.status}`);
+    }
+    const pollBody = (await pollRes.json()) as BflResult;
+    if (pollBody.status === "Ready") {
+      const url = pollBody.result?.sample;
+      if (!url) throw new Error("Ready but no image URL returned.");
+      return { imageUrl: url, taskId: submitBody.id };
+    }
+    if (pollBody.status === "Content Moderated") {
+      throw new Error(
+        "Generation was content-moderated. Try rephrasing the prompt."
+      );
+    }
+    if (pollBody.status === "Error" || pollBody.status === "Task not found") {
+      throw new Error(`Generation failed: ${pollBody.status}`);
+    }
+    await new Promise((r) => setTimeout(r, pollIntervalMs));
+  }
+  throw new Error(
+    "Generation timed out — check `avatar list` later or retry."
+  );
+}
