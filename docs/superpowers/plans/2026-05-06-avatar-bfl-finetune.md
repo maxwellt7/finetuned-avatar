@@ -1697,7 +1697,7 @@ Expected: timestamps, prompts, paths printed newest-first.
 
 - [ ] **Step 8: Rotate the leaked API key**
 
-Go to https://dashboard.bfl.ai, revoke the key starting `bfl_yJUq...`, generate a new one, replace `BFL_API_KEY` in `~/avatar/.env`.
+Go to https://dashboard.bfl.ai, revoke the BFL key that was pasted in chat earlier, generate a new one, replace `BFL_API_KEY` in `~/avatar/.env`.
 
 - [ ] **Step 9: Commit any final tweaks**
 
