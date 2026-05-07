@@ -29,3 +29,32 @@ describe("dedupeFiles", () => {
     await expect(dedupeFiles(empty)).rejects.toThrow(/no images/i);
   });
 });
+
+import sharp from "sharp";
+import { normalizeImage } from "../src/prepare.js";
+
+describe("normalizeImage", () => {
+  it("resizes long-edge to 2048 and strips EXIF", async () => {
+    const big = await sharp({
+      create: { width: 4000, height: 3000, channels: 3, background: "#888" },
+    })
+      .jpeg()
+      .toBuffer();
+
+    const out = await normalizeImage(big);
+    const meta = await sharp(out).metadata();
+    expect(Math.max(meta.width!, meta.height!)).toBe(2048);
+  });
+
+  it("leaves small images untouched in dimensions", async () => {
+    const small = await sharp({
+      create: { width: 800, height: 600, channels: 3, background: "#222" },
+    })
+      .jpeg()
+      .toBuffer();
+    const out = await normalizeImage(small);
+    const meta = await sharp(out).metadata();
+    expect(meta.width).toBe(800);
+    expect(meta.height).toBe(600);
+  });
+});
