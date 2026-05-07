@@ -22,7 +22,7 @@ describe("loadConfig", () => {
     const cfg = loadConfig();
     expect(cfg.apiKey).toBe("test-key");
     expect(cfg.triggerWord).toBe("MAXAVATAR");
-    expect(cfg.apiBase).toBe("https://api.us1.bfl.ai/v1");
+    expect(cfg.apiBase).toBe("https://api.bfl.ai/v1");
     expect(cfg.photosDir).toContain("pics of me");
     expect(cfg.cacheFile).toMatch(/cache\/finetune\.json$/);
     expect(cfg.outputDir).toMatch(/output$/);

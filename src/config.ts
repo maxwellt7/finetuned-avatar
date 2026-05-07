@@ -23,7 +23,7 @@ export function loadConfig(): Config {
   }
   return {
     apiKey,
-    apiBase: "https://api.us1.bfl.ai/v1",
+    apiBase: "https://api.bfl.ai/v1",
     triggerWord: "MAXAVATAR",
     photosDir:
       process.env.PHOTOS_DIR ?? "/Users/maxmayes/Desktop/pics of me",
