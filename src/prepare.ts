@@ -29,5 +29,5 @@ export async function normalizeImage(buf: Buffer): Promise<Buffer> {
   const meta = await img.metadata();
   const longEdge = Math.max(meta.width ?? 0, meta.height ?? 0);
   const pipeline = longEdge > 2048 ? img.resize({ width: 2048, height: 2048, fit: "inside" }) : img;
-  return pipeline.jpeg({ quality: 92, mozjpeg: true }).withMetadata({}).toBuffer();
+  return pipeline.jpeg({ quality: 92, mozjpeg: true }).toBuffer();
 }

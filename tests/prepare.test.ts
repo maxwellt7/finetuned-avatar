@@ -38,12 +38,17 @@ describe("normalizeImage", () => {
     const big = await sharp({
       create: { width: 4000, height: 3000, channels: 3, background: "#888" },
     })
+      .withExif({ IFD0: { Software: "test-software-tag" } })
       .jpeg()
       .toBuffer();
+
+    const inputMeta = await sharp(big).metadata();
+    expect(inputMeta.exif).toBeDefined(); // sanity: input has EXIF
 
     const out = await normalizeImage(big);
     const meta = await sharp(out).metadata();
     expect(Math.max(meta.width!, meta.height!)).toBe(2048);
+    expect(meta.exif).toBeUndefined();
   });
 
   it("leaves small images untouched in dimensions", async () => {
