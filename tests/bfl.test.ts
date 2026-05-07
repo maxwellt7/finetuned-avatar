@@ -56,3 +56,26 @@ describe("submitFinetune", () => {
     ).rejects.toThrow(/auth/i);
   });
 });
+
+import { getResult } from "../src/bfl.js";
+
+describe("getResult", () => {
+  it("GETs /get_result?id=...", async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ status: "Ready", result: { sample: "https://x/y.png" } }), {
+        status: 200,
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await getResult(
+      { apiKey: "k", apiBase: "https://api.test/v1" } as any,
+      "ft_123"
+    );
+
+    expect(result.status).toBe("Ready");
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "https://api.test/v1/get_result?id=ft_123"
+    );
+  });
+});

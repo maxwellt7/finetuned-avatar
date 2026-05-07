@@ -48,3 +48,25 @@ export async function submitFinetune(
   const body = (await res.json()) as { finetune_id: string };
   return body.finetune_id;
 }
+
+export type FinetuneStatus =
+  | "Pending"
+  | "Ready"
+  | "Error"
+  | "Content Moderated"
+  | "Task not found";
+
+export interface BflResult {
+  status: FinetuneStatus;
+  result?: { sample?: string };
+}
+
+export async function getResult(
+  cfg: Pick<Config, "apiKey" | "apiBase">,
+  id: string
+): Promise<BflResult> {
+  const res = await bflFetch(cfg, `/get_result?id=${encodeURIComponent(id)}`, {
+    method: "GET",
+  });
+  return (await res.json()) as BflResult;
+}
