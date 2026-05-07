@@ -32,6 +32,7 @@ describe("dedupeFiles", () => {
 
 import sharp from "sharp";
 import { normalizeImage } from "../src/prepare.js";
+import { buildTrainingZip } from "../src/prepare.js";
 
 describe("normalizeImage", () => {
   it("resizes long-edge to 2048 and strips EXIF", async () => {
@@ -61,5 +62,33 @@ describe("normalizeImage", () => {
     const meta = await sharp(out).metadata();
     expect(meta.width).toBe(800);
     expect(meta.height).toBe(600);
+  });
+});
+
+describe("buildTrainingZip", () => {
+  it("returns a non-empty base64 string given a directory of images", async () => {
+    const fixtures = join(tmp, "ftset");
+    mkdirSync(fixtures, { recursive: true });
+    const small = await sharp({
+      create: { width: 200, height: 200, channels: 3, background: "#abc" },
+    })
+      .jpeg()
+      .toBuffer();
+    writeFileSync(join(fixtures, "p1.jpg"), small);
+    writeFileSync(join(fixtures, "p2.jpg"), small); // duplicate hash -> deduped
+    writeFileSync(
+      join(fixtures, "p3.jpg"),
+      await sharp({ create: { width: 200, height: 200, channels: 3, background: "#fff" } })
+        .jpeg()
+        .toBuffer()
+    );
+
+    const result = await buildTrainingZip(fixtures);
+    expect(result.uniqueCount).toBe(2);
+    expect(result.totalCount).toBe(3);
+    expect(result.base64.length).toBeGreaterThan(100);
+    // base64 should decode to a zip (PK\x03\x04)
+    const buf = Buffer.from(result.base64, "base64");
+    expect(buf.subarray(0, 2).toString()).toBe("PK");
   });
 });
