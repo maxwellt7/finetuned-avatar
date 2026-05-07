@@ -6,6 +6,7 @@
   "bin": { "avatar": "./dist/cli.js" },
   "scripts": {
     "build": "tsc -p .",
+    "postbuild": "chmod +x dist/cli.js",
     "dev": "tsx src/cli.ts",
     "test": "vitest run",
     "test:watch": "vitest",
