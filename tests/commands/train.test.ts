@@ -21,9 +21,28 @@ beforeEach(async () => {
 
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () =>
-      new Response(JSON.stringify({ finetune_id: "ft_xyz" }), { status: 200 })
-    )
+    vi.fn(async (url: string) => {
+      if (url.endsWith("/storage/upload/initiate")) {
+        return new Response(
+          JSON.stringify({
+            file_url: "https://cdn/zip.zip",
+            upload_url: "https://signed.test/put",
+          }),
+          { status: 200 }
+        );
+      }
+      if (url.endsWith("/fal-ai/flux-lora-portrait-trainer")) {
+        return new Response(
+          JSON.stringify({
+            request_id: "req_xyz",
+            status_url: "https://queue.test/status",
+            response_url: "https://queue.test/response",
+          }),
+          { status: 200 }
+        );
+      }
+      return new Response(null, { status: 200 });
+    })
   );
 });
 
@@ -33,10 +52,11 @@ afterEach(() => {
 });
 
 describe("runTrain", () => {
-  it("submits a finetune and writes cache file", async () => {
+  it("uploads zip, submits training, and writes cache file", async () => {
     const cfg = {
       apiKey: "k",
-      apiBase: "https://api.test/v1",
+      queueBase: "https://queue.test",
+      storageBase: "https://storage.test",
       triggerWord: "MAXAVATAR",
       photosDir,
       cacheFile,
@@ -45,10 +65,13 @@ describe("runTrain", () => {
 
     const id = await runTrain(cfg);
 
-    expect(id).toBe("ft_xyz");
+    expect(id).toBe("req_xyz");
     expect(existsSync(cacheFile)).toBe(true);
     const cached = JSON.parse(readFileSync(cacheFile, "utf8"));
-    expect(cached.id).toBe("ft_xyz");
+    expect(cached.id).toBe("req_xyz");
+    expect(cached.statusUrl).toBe("https://queue.test/status");
+    expect(cached.responseUrl).toBe("https://queue.test/response");
+    expect(cached.imagesDataUrl).toBe("https://cdn/zip.zip");
     expect(cached.trigger).toBe("MAXAVATAR");
     expect(cached.status).toBe("Pending");
     expect(cached.photoCount).toBe(1); // p1 and p2 are duplicates

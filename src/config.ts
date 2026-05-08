@@ -7,7 +7,8 @@ const projectRoot = resolve(here, "..");
 
 export interface Config {
   apiKey: string;
-  apiBase: string;
+  queueBase: string;
+  storageBase: string;
   triggerWord: string;
   photosDir: string;
   cacheFile: string;
@@ -15,15 +16,16 @@ export interface Config {
 }
 
 export function loadConfig(): Config {
-  const apiKey = process.env.BFL_API_KEY;
+  const apiKey = process.env.FAL_API_KEY;
   if (!apiKey) {
     throw new Error(
-      "BFL_API_KEY is not set. Add it to ~/avatar/.env (chmod 600)."
+      "FAL_API_KEY is not set. Add it to ~/avatar/.env (chmod 600)."
     );
   }
   return {
     apiKey,
-    apiBase: "https://api.bfl.ai/v1",
+    queueBase: "https://queue.fal.run",
+    storageBase: "https://rest.alpha.fal.ai",
     triggerWord: "MAXAVATAR",
     photosDir:
       process.env.PHOTOS_DIR ?? "/Users/maxmayes/Desktop/pics of me",

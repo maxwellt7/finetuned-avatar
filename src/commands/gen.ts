@@ -2,7 +2,12 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { execFile } from "node:child_process";
 import type { Config } from "../config.js";
-import { generate, getResult } from "../bfl.js";
+import {
+  generate,
+  getRequestStatus,
+  getTrainResult,
+  type GeneratePayload,
+} from "../fal.js";
 
 export interface GenOptions {
   count: number;
@@ -11,6 +16,14 @@ export interface GenOptions {
   open: boolean;
   pollIntervalMs?: number;
 }
+
+const ASPECT_TO_FAL_SIZE: Record<string, GeneratePayload["image_size"]> = {
+  "1:1": "square_hd",
+  "4:3": "landscape_4_3",
+  "3:4": "portrait_4_3",
+  "16:9": "landscape_16_9",
+  "9:16": "portrait_16_9",
+};
 
 function slugify(s: string): string {
   return s
@@ -40,14 +53,17 @@ export async function runGen(
   }
   const cached = JSON.parse(readFileSync(cfg.cacheFile, "utf8"));
 
-  if (cached.status !== "Ready") {
-    const live = await getResult(cfg, cached.id);
-    if (live.status !== "Ready") {
+  if (!cached.loraUrl) {
+    const live = await getRequestStatus(cfg, cached.statusUrl);
+    if (live.status !== "COMPLETED") {
       throw new Error(
         `Avatar still training (state: ${live.status}). Try again later.`
       );
     }
-    cached.status = "Ready";
+    const result = await getTrainResult(cfg, cached.responseUrl);
+    cached.status = "COMPLETED";
+    cached.loraUrl = result.diffusers_lora_file.url;
+    if (result.config_file?.url) cached.configUrl = result.config_file.url;
     writeFileSync(cfg.cacheFile, JSON.stringify(cached, null, 2));
   }
 
@@ -57,29 +73,34 @@ export async function runGen(
     );
   }
 
+  const imageSize = ASPECT_TO_FAL_SIZE[opts.aspectRatio];
+  if (!imageSize) {
+    throw new Error(
+      `Unsupported aspect ratio "${opts.aspectRatio}". Use one of: ${Object.keys(ASPECT_TO_FAL_SIZE).join(", ")}.`
+    );
+  }
+
   mkdirSync(cfg.outputDir, { recursive: true });
-  const tasks = Array.from({ length: opts.count }, () =>
-    generate(
-      cfg,
-      {
-        finetune_id: cached.id,
-        finetune_strength: opts.strength,
-        prompt,
-        aspect_ratio: opts.aspectRatio,
-        safety_tolerance: 2,
-        output_format: "png",
-      },
-      { pollIntervalMs: opts.pollIntervalMs }
-    )
+
+  const submissions = await generate(
+    cfg,
+    {
+      prompt,
+      loras: [{ path: cached.loraUrl, scale: opts.strength }],
+      image_size: imageSize,
+      num_images: opts.count,
+      output_format: "png",
+      enable_safety_checker: false,
+    },
+    { pollIntervalMs: opts.pollIntervalMs }
   );
-  const results = await Promise.all(tasks);
 
   const slug = slugify(prompt);
   const paths: string[] = [];
-  for (let i = 0; i < results.length; i++) {
-    const r = results[i];
+  for (let i = 0; i < submissions.length; i++) {
+    const r = submissions[i];
     const ts = tsForFile();
-    const suffix = results.length > 1 ? `-${i + 1}` : "";
+    const suffix = submissions.length > 1 ? `-${i + 1}` : "";
     const pngPath = join(cfg.outputDir, `${ts}-${slug}${suffix}.png`);
     const jsonPath = join(cfg.outputDir, `${ts}-${slug}${suffix}.json`);
     const imgRes = await fetch(r.imageUrl);
@@ -92,8 +113,8 @@ export async function runGen(
       JSON.stringify(
         {
           prompt,
-          finetune_id: cached.id,
-          finetune_strength: opts.strength,
+          lora_url: cached.loraUrl,
+          lora_scale: opts.strength,
           aspect_ratio: opts.aspectRatio,
           request_id: r.taskId,
           generated_at: new Date().toISOString(),
