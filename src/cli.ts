@@ -30,7 +30,7 @@ program
   .description("Generate image(s) from a prompt")
   .option("-n, --count <n>", "number of images (max 4)", (v) => parseInt(v, 10), 1)
   .option("-a, --aspect <ratio>", "aspect ratio (e.g. 1:1, 16:9)", "1:1")
-  .option("-s, --strength <f>", "finetune strength", (v) => parseFloat(v), 1.2)
+  .option("-s, --strength <f>", "LoRA scale (1.0 default; 0.8-1.0 best for portraits)", (v) => parseFloat(v), 1.0)
   .option("--no-open", "do not auto-open the image after generation")
   .action(async (prompt: string, opts: { count: number; aspect: string; strength: number; open: boolean }) => {
     const cfg = loadConfig();

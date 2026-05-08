@@ -89,6 +89,8 @@ export async function runGen(
       loras: [{ path: cached.loraUrl, scale: opts.strength }],
       image_size: imageSize,
       num_images: opts.count,
+      num_inference_steps: 50,
+      guidance_scale: 3.5,
       output_format: "png",
       enable_safety_checker: false,
     },
